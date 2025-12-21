@@ -2,22 +2,22 @@
 
 set -e
 
-# 安装 sing-box
-curl -fsSL https://sing-box.app/install.sh | bash
+mkdir -p ~/vless-tcp
+cd ~/vless-tcp
 
-# 创建配置目录
-mkdir -p /etc/sing-box
+# 下载 sing-box
+SB_VER="1.12.13"
+wget -O sb.tar.gz https://github.com/SagerNet/sing-box/releases/download/v${SB_VER}/sing-box-${SB_VER}-linux-amd64.tar.gz
+tar -xzf sb.tar.gz
+mv sing-box-${SB_VER}-linux-amd64/sing-box .
+chmod +x sing-box
 
 # 生成 UUID
 UUID=$(cat /proc/sys/kernel/random/uuid)
 
 # 写入配置
-cat >/etc/sing-box/config.json <<EOF
+cat > config.json <<EOF
 {
-  "log": {
-    "disabled": false,
-    "level": "info"
-  },
   "inbounds": [
     {
       "type": "vless",
@@ -41,27 +41,19 @@ cat >/etc/sing-box/config.json <<EOF
 }
 EOF
 
-# 创建 systemd 服务
-cat >/etc/systemd/system/sing-box.service <<EOF
-[Unit]
-Description=sing-box service
-After=network.target
-
-[Service]
-ExecStart=/usr/local/bin/sing-box run -c /etc/sing-box/config.json
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
+# 运行脚本
+cat > run.sh <<EOF
+#!/bin/bash
+cd ~/vless-tcp
+nohup ./sing-box run -c config.json >/dev/null 2>&1 &
+echo "VLESS-TCP started"
 EOF
 
-systemctl daemon-reload
-systemctl enable sing-box
-systemctl restart sing-box
+chmod +x run.sh
 
 echo "=============================="
-echo "VLESS-TCP 节点安装完成"
+echo "VLESS-TCP 用户态节点安装完成"
 echo "UUID: $UUID"
 echo "端口: 443"
-echo "协议: VLESS-TCP"
+echo "运行方式: ~/vless-tcp/run.sh"
 echo "=============================="
